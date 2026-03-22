@@ -125,10 +125,10 @@ export default function PracticeQuestions() {
             <p style={{ fontSize: 15, lineHeight: 1.7, marginBottom: 16 }}>{q.question}</p>
 
             {/* Options */}
-            {q.options && (
+            {Array.isArray(q.options) && q.options.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
                 {q.options.map((opt, oi) => {
-                  const optLetter = opt.charAt(0);
+                  const optLetter = typeof opt === 'string' ? opt.charAt(0) : String.fromCharCode(65 + oi);
                   const isSelected = userAns === optLetter;
                   const isAnswer = q.correct === optLetter;
                   let bg = 'var(--bg-3)', border = 'var(--border)', color = 'var(--text)';
@@ -149,14 +149,14 @@ export default function PracticeQuestions() {
             )}
 
             {/* Fill in blank */}
-            {!q.options && (
+            {(!Array.isArray(q.options) || q.options.length === 0) && (
               <input className="input" style={{ marginBottom: 12 }} placeholder="Type your answer..." disabled={submitted}
                 value={answers[q.id] || ''} onChange={e => setAnswers({...answers, [q.id]: e.target.value})} />
             )}
 
             {/* Hints & Explanation */}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {!submitted && q.hints?.length > 0 && (
+              {!submitted && Array.isArray(q.hints) && q.hints.length > 0 && (
                 <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowHints({...showHints, [q.id]: !showHints[q.id]})}>
                   💡 {showHints[q.id] ? 'Hide' : 'Show'} Hints
                 </button>

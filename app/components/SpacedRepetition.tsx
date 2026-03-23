@@ -31,7 +31,49 @@ export default function SpacedRepetition() {
 
   useEffect(() => {
     const saved = getStorageData<any[]>('concepts', []);
-    setConcepts(saved.map(c => ({ ...c, nextReview: new Date(c.nextReview), lastStudied: new Date(c.lastStudied) })));
+    if (saved.length === 0) {
+      // Pre-feed data for new users to showcase graphs
+      const now = new Date();
+      const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
+      const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
+      const nextWeek = new Date(now); nextWeek.setDate(nextWeek.getDate() + 7);
+
+      // Robust dataset simulating usage over the past month
+      const dummyConcepts: Concept[] = [
+        // Physics
+        { id: '1', name: "Newton's First Law", subject: 'Physics', topic: 'Mechanics', notes: 'Law of Inertia', lastStudied: new Date(now.getTime() - 2*86400000), nextReview: new Date(now.getTime() + 5*86400000), interval: 7, easeFactor: 2.6, repetitions: 4, quality: 5 },
+        { id: '2', name: "Kinematics Equations", subject: 'Physics', topic: 'Mechanics', notes: 'v = u + at, etc.', lastStudied: new Date(now.getTime() - 7*86400000), nextReview: yesterday, interval: 6, easeFactor: 2.3, repetitions: 3, quality: 3 },
+        { id: '3', name: "Ohm's Law", subject: 'Physics', topic: 'Electromagnetism', notes: 'V = IR', lastStudied: new Date(now.getTime() - 14*86400000), nextReview: new Date(now.getTime() + 10*86400000), interval: 24, easeFactor: 2.7, repetitions: 6, quality: 4 },
+        { id: '4', name: "Coulomb's Law", subject: 'Physics', topic: 'Electromagnetism', notes: 'Electrostatic force', lastStudied: yesterday, nextReview: tomorrow, interval: 2, easeFactor: 2.1, repetitions: 1, quality: 3 },
+        { id: '5', name: "Work-Energy Theorem", subject: 'Physics', topic: 'Mechanics', notes: 'W = ΔK', lastStudied: now, nextReview: now, interval: 1, easeFactor: 2.5, repetitions: 0, quality: 0 },
+        
+        // Biology
+        { id: '6', name: "Mitochondria Function", subject: 'Biology', topic: 'Cell Biology', notes: 'Powerhouse, ATP production', lastStudied: new Date(now.getTime() - 3*86400000), nextReview: new Date(now.getTime() + 2*86400000), interval: 5, easeFactor: 2.5, repetitions: 3, quality: 4 },
+        { id: '7', name: "Mitosis vs Meiosis", subject: 'Biology', topic: 'Cell Biology', notes: 'Somatic vs Germ cells', lastStudied: new Date(now.getTime() - 1*86400000), nextReview: now, interval: 1, easeFactor: 1.9, repetitions: 1, quality: 2 },
+        { id: '8', name: "Endocrine System", subject: 'Biology', topic: 'Human Physiology', notes: 'Hormonal control, Glands', lastStudied: new Date(now.getTime() - 20*86400000), nextReview: new Date(now.getTime() + 14*86400000), interval: 34, easeFactor: 2.9, repetitions: 7, quality: 5 },
+        { id: '9', name: "Photosynthesis Stages", subject: 'Biology', topic: 'Plant Physiology', notes: 'Light vs Dark reactions', lastStudied: yesterday, nextReview: tomorrow, interval: 2, easeFactor: 2.4, repetitions: 2, quality: 4 },
+        
+        // Chemistry
+        { id: '10', name: "Haber Process", subject: 'Chemistry', topic: 'Industrial Chemistry', notes: 'Ammonia synthesis, N2 + 3H2', lastStudied: new Date(now.getTime() - 5*86400000), nextReview: yesterday, interval: 4, easeFactor: 2.2, repetitions: 2, quality: 3 },
+        { id: '11', name: "Le Chatelier's Principle", subject: 'Chemistry', topic: 'Physical Chemistry', notes: 'Equilibrium shifts', lastStudied: new Date(now.getTime() - 2*86400000), nextReview: new Date(now.getTime() + 4*86400000), interval: 6, easeFactor: 2.6, repetitions: 3, quality: 5 },
+        { id: '12', name: "SN1 vs SN2 Reactions", subject: 'Chemistry', topic: 'Organic Chemistry', notes: 'Nucleophilic substitution', lastStudied: now, nextReview: now, interval: 1, easeFactor: 2.5, repetitions: 0, quality: 0 },
+        
+        // Math
+        { id: '13', name: "Integration by Parts", subject: 'Mathematics', topic: 'Calculus', notes: 'ILATE rule', lastStudied: new Date(now.getTime() - 1*86400000), nextReview: now, interval: 1, easeFactor: 2.1, repetitions: 1, quality: 2 },
+        { id: '14', name: "Bayes' Theorem", subject: 'Mathematics', topic: 'Probability', notes: 'P(A|B) = P(B|A)P(A)/P(B)', lastStudied: new Date(now.getTime() - 10*86400000), nextReview: new Date(now.getTime() + 5*86400000), interval: 15, easeFactor: 2.5, repetitions: 4, quality: 4 },
+        { id: '15', name: "Matrix Determinants", subject: 'Mathematics', topic: 'Algebra', notes: 'Cross-multiplication rule', lastStudied: new Date(now.getTime() - 30*86400000), nextReview: new Date(now.getTime() + 20*86400000), interval: 50, easeFactor: 3.0, repetitions: 8, quality: 5 },
+        
+        // Humanities
+        { id: '16', name: "El Nino Phenomenon", subject: 'Geography', topic: 'Climatology', notes: 'Warming of central/eastern Pacific', lastStudied: new Date(now.getTime() - 2*86400000), nextReview: now, interval: 2, easeFactor: 2.3, repetitions: 2, quality: 3 },
+        { id: '17', name: "Revolt of 1857", subject: 'History', topic: 'Modern India', notes: 'First war of independence, Mangal Pandey', lastStudied: new Date(now.getTime() - 4*86400000), nextReview: tomorrow, interval: 5, easeFactor: 2.5, repetitions: 2, quality: 4 },
+        { id: '18', name: "Fundamental Rights", subject: 'Polity', topic: 'Constitution', notes: 'Part III, Articles 12-35', lastStudied: new Date(now.getTime() - 12*86400000), nextReview: new Date(now.getTime() + 8*86400000), interval: 20, easeFactor: 2.7, repetitions: 5, quality: 5 },
+        { id: '19', name: "Directive Principles (DPSP)", subject: 'Polity', topic: 'Constitution', notes: 'Part IV, Article 36-51', lastStudied: yesterday, nextReview: now, interval: 1, easeFactor: 2.0, repetitions: 1, quality: 2 },
+      ];
+      setConcepts(dummyConcepts);
+      setStorageData('concepts', dummyConcepts);
+    } else {
+      setConcepts(saved.map(c => ({ ...c, nextReview: new Date(c.nextReview), lastStudied: new Date(c.lastStudied) })));
+    }
   }, []);
 
   const save = (updated: Concept[]) => { setConcepts(updated); setStorageData('concepts', updated); };
@@ -107,6 +149,31 @@ export default function SpacedRepetition() {
     acc[c.subject] = [...(acc[c.subject] || []), c]; return acc;
   }, {});
   const card = currentConcept ? cardData[currentConcept.id] : null;
+
+  // Calculate upcoming reviews for the graph
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcomingData = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const count = concepts.filter(c => {
+      const reviewDate = new Date(c.nextReview);
+      reviewDate.setHours(0, 0, 0, 0);
+      return reviewDate.getTime() === d.getTime() || (i === 0 && reviewDate.getTime() < d.getTime());
+    }).length;
+    return {
+      label: i === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' }),
+      count,
+      isToday: i === 0
+    };
+  });
+
+  const maxUpcoming = Math.max(1, ...upcomingData.map(d => d.count));
+
+  // Average retention calculation (roughly based on ease factor)
+  const avgRetention = concepts.length > 0 
+    ? Math.min(99, Math.round((concepts.reduce((acc, c) => acc + c.easeFactor, 0) / concepts.length) / 2.5 * 85))
+    : 0;
 
   return (
     <div style={{ padding: '32px', maxWidth: 1000, margin: '0 auto' }}>
@@ -269,19 +336,47 @@ export default function SpacedRepetition() {
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
             {[
-              { label: 'Total', value: concepts.length, color: 'var(--accent)' },
-              { label: 'Due Today', value: dueToday.length, color: 'var(--amber)' },
-              { label: 'Mastered (5+)', value: concepts.filter(c => c.repetitions >= 5).length, color: 'var(--green)' },
-              { label: 'New', value: concepts.filter(c => c.repetitions === 0).length, color: 'var(--blue)' },
+              { label: 'Total Concepts', value: concepts.length, color: 'var(--accent)' },
+              { label: 'Due for Review', value: dueToday.length, color: 'var(--amber)' },
+              { label: 'Mastered (5+ reps)', value: concepts.filter(c => c.repetitions >= 5).length, color: 'var(--green)' },
+              { label: 'Est. Retention', value: `${avgRetention}%`, color: 'var(--blue)' },
             ].map((s, i) => (
-              <div key={i} className="card" style={{ padding: 14, textAlign: 'center' }}>
-                <div style={{ fontSize: 22, fontFamily: 'Syne', fontWeight: 800, color: s.color }}>{s.value}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{s.label}</div>
+              <div key={i} className="card" style={{ padding: '16px 14px', textAlign: 'center' }}>
+                <div style={{ fontSize: 28, fontFamily: 'Syne', fontWeight: 800, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 4 }}>{s.label}</div>
               </div>
             ))}
           </div>
 
-          <div style={{ display: 'flex', gap: 6, marginBottom: 18, flexWrap: 'wrap' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 20, marginBottom: 32 }}>
+            <div className="card" style={{ padding: 24 }}>
+              <h3 style={{ fontSize: 15, marginBottom: 16 }}>📈 Learning Curve</h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140, flexDirection: 'column' }}>
+                <div style={{ width: 120, height: 120, borderRadius: '50%', border: '8px solid var(--bg-3)', borderTopColor: 'var(--accent)', borderRightColor: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'rotate(-45deg)' }}>
+                  <div style={{ transform: 'rotate(45deg)', textAlign: 'center' }}>
+                    <div style={{ fontSize: 24, fontFamily: 'Syne', fontWeight: 800, color: 'var(--accent)' }}>{avgRetention}%</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>Average</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: 24 }}>
+              <h3 style={{ fontSize: 15, marginBottom: 16 }}>📅 Upcoming Reviews</h3>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 140, paddingTop: 20 }}>
+                {upcomingData.map((d, i) => (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <div style={{ fontSize: 11, color: d.isToday ? 'var(--amber)' : 'var(--text-2)', fontFamily: 'Syne', fontWeight: 700 }}>{d.count > 0 ? d.count : ''}</div>
+                    <div style={{ width: '100%', background: d.isToday ? 'var(--amber)' : 'var(--accent)', borderRadius: '4px 4px 0 0', height: `${Math.max(4, (d.count / maxUpcoming) * 100)}%`, opacity: d.count === 0 ? 0.2 : 1, transition: 'height 0.3s ease' }} />
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{d.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 6, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: 14, fontFamily: 'Syne', fontWeight: 700, marginRight: 8 }}>Knowledge Graph:</span>
             {['All', ...SUBJECTS].map(s => (
               <button key={s} className={`tab-btn ${filterSubject === s ? 'active' : ''}`}
                 style={{ fontSize: 12, padding: '5px 12px' }} onClick={() => setFilterSubject(s)}>{s}</button>

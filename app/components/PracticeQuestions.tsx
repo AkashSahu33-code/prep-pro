@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { SUBJECTS, TOPICS } from '../../lib/store';
+import { Concept, calculateNextReview, getStorageData, setStorageData, SUBJECTS, TOPICS } from '../../lib/store';
 
 interface Question {
   id: number; question: string; type: string; options?: string[];
@@ -28,6 +28,60 @@ export default function PracticeQuestions() {
       else setError(data.error || 'Failed to generate questions');
     } catch { setError('Network error'); }
     setLoading(false);
+  };
+
+  const submitAnswers = () => {
+    setSubmitted(true);
+    
+    // Process results for Spaced Repetition knowledge graph
+    const existingConcepts = getStorageData<Concept[]>('concepts', []);
+    let updatedConcepts = [...existingConcepts];
+    let conceptsModified = false;
+    
+    questions.forEach(q => {
+      const userAns = answers[q.id];
+      if (!userAns) return;
+      
+      const isCorrect = userAns === q.correct;
+      const conceptName = q.concept;
+      
+      // Try to find the concept in the graph
+      const existingIdx = updatedConcepts.findIndex(c => 
+        c.name.toLowerCase() === conceptName.toLowerCase() && 
+        c.subject === config.subject
+      );
+      
+      if (existingIdx >= 0) {
+        // Concept exists -> Update its SM-2 intervals
+        // 4 = Easy (correct), 1 = Very Hard (wrong)
+        const quality = isCorrect ? 4 : 1;
+        updatedConcepts[existingIdx] = calculateNextReview(updatedConcepts[existingIdx], quality);
+        conceptsModified = true;
+      } else if (!isCorrect) {
+        // Concept doesn't exist, but user got it wrong -> Add to review queue automatically
+        const today = new Date();
+        const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        updatedConcepts.push({
+          id: Date.now().toString() + Math.random().toString().slice(2, 6),
+          name: conceptName,
+          subject: config.subject,
+          topic: config.topic,
+          notes: `Failed practice question. Question: "${q.question.substring(0, 50)}..."`,
+          lastStudied: today,
+          nextReview: tomorrow,
+          interval: 1,
+          easeFactor: 2.3,
+          repetitions: 0,
+          quality: 1
+        });
+        conceptsModified = true;
+      }
+    });
+    
+    if (conceptsModified) {
+      setStorageData('concepts', updatedConcepts);
+    }
   };
 
   const score = questions.filter(q => answers[q.id] === q.correct).length;
@@ -99,6 +153,9 @@ export default function PracticeQuestions() {
           <p style={{ color: 'var(--text-2)', fontSize: 14 }}>
             {score === questions.length ? '🎉 Perfect score!' : score > questions.length/2 ? '👍 Good job! Review the explanations below.' : '📚 Keep practicing! Check the detailed explanations.'}
           </p>
+          <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 16 }}>🔁</span> Your performance has been synced to the Knowledge Graph. Weak areas are scheduled for review.
+          </div>
         </div>
       )}
 
@@ -185,7 +242,7 @@ export default function PracticeQuestions() {
 
       {questions.length > 0 && !submitted && (
         <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}
-          onClick={() => setSubmitted(true)} disabled={Object.keys(answers).length < questions.length}>
+          onClick={submitAnswers} disabled={Object.keys(answers).length < questions.length}>
           Submit All Answers ({Object.keys(answers).length}/{questions.length} answered)
         </button>
       )}

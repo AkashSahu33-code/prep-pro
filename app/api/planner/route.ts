@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { geminiJSON } from '../../../lib/gemini';
+import { openrouterJSON } from '../../../lib/openrouter';
 
 const SYSTEM = `You are an expert study planner for Indian competitive exam students.
 You create realistic, adaptive study schedules optimised around forgetting curves and spaced repetition principles.
@@ -53,7 +53,7 @@ Student data:
 
 Generate ${Math.min(Math.ceil(daysLeft / 7), 4)} weeks. Prioritise weak areas. Include revision and mock tests in later weeks.`;
 
-    const plan = await geminiJSON(prompt, SYSTEM);
+    const plan = await openrouterJSON(prompt, SYSTEM);
     return NextResponse.json({ plan });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

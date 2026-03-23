@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { geminiJSON } from '../../../../lib/gemini';
+import { openrouterJSON } from '../../../../lib/openrouter';
 
 const SYSTEM = `You are an AI that extracts key facts about a student from their tutoring conversation.
 Extract only important, reusable facts like:
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     const prompt = `Extract key reusable facts about this student from the following conversation:\n\n${recent}\n\nReturn a JSON array of short fact strings.`;
 
-    const facts = await geminiJSON<string[]>(prompt, SYSTEM);
+    const facts = await openrouterJSON<string[]>(prompt, SYSTEM);
     return NextResponse.json({ facts: Array.isArray(facts) ? facts : [] });
   } catch (e: any) {
     // Memory extraction is non-critical, don't fail the whole flow

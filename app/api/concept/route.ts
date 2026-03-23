@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { geminiJSON } from '../../../lib/gemini';
+import { openrouterJSON } from '../../../lib/openrouter';
 
 const SYSTEM = `You are an expert teacher. Generate study card content for a concept.
 Return ONLY valid JSON, no markdown.`;
@@ -23,7 +23,7 @@ Return this JSON:
   "ncertRef": "NCERT chapter/page reference if known"
 }`;
 
-    const card = await geminiJSON(prompt, SYSTEM);
+    const card = await openrouterJSON(prompt, SYSTEM);
     return NextResponse.json({ card });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

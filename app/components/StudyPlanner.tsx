@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { SUBJECTS } from '../../lib/store';
+import { SUBJECTS, getStorageData, Concept } from '../../lib/store';
 
 interface PlanDay {
   day: string; date: string;
@@ -24,8 +24,26 @@ export default function StudyPlanner() {
   const generate = async () => {
     if (!form.subjects.length || !form.examDate) return;
     setLoading(true); setError('');
+    
+    // Auto-detect weak areas from Spaced Repetition Knowledge Graph
+    const concepts = getStorageData<Concept[]>('concepts', []);
+    const weakConcepts = concepts
+      .filter(c => form.subjects.includes(c.subject) && c.quality <= 2)
+      .map(c => c.name);
+      
+    // Combine manual weak areas with auto-detected ones
+    let combinedWeakAreas = form.weakAreas;
+    if (weakConcepts.length > 0) {
+      const autoStr = `Auto-detected weak concepts to focus heavily on: ${weakConcepts.join(', ')}. `;
+      combinedWeakAreas = combinedWeakAreas ? autoStr + combinedWeakAreas : autoStr;
+    }
+    
     try {
-      const res = await fetch('/api/planner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      const res = await fetch('/api/planner', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ ...form, weakAreas: combinedWeakAreas }) 
+      });
       const data = await res.json();
       if (data.plan) setPlan(data.plan);
       else setError(data.error || 'Failed to generate plan');
@@ -40,7 +58,7 @@ export default function StudyPlanner() {
     <div style={{ padding: '32px', maxWidth: 1000, margin: '0 auto' }}>
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 26, marginBottom: 4 }}>📅 Autonomous Study Planner</h1>
-        <p style={{ color: 'var(--text-2)', fontSize: 14 }}>AI generates a personalized schedule based on your exam date & weak areas</p>
+        <p style={{ color: 'var(--text-2)', fontSize: 14 }}>AI generates a personalized schedule prioritizing your weak areas from the Knowledge Graph</p>
       </div>
 
       {!plan ? (

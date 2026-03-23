@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { geminiJSON } from '../../../lib/gemini';
+import { openrouterJSON } from '../../../lib/openrouter';
 
 const SYSTEM = `You are a study performance analyst. Analyse the student's learning data and return actionable insights.
 Return ONLY valid JSON, no markdown.`;
@@ -29,7 +29,7 @@ Return:
   "motivationalMessage": "Short encouraging message in Hinglish"
 }`;
 
-    const insights = await geminiJSON(prompt, SYSTEM);
+    const insights = await openrouterJSON(prompt, SYSTEM);
     return NextResponse.json({ insights });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

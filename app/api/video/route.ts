@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { geminiJSON } from '../../../lib/gemini';
+import { openrouterJSON } from '../../../lib/openrouter';
 
 const SYSTEM = `You are an expert educational content processor that creates structured study notes.
 Extract and organise all educational content from the given video information.
@@ -103,7 +103,7 @@ Return this exact JSON structure:
 
 Generate at least 5 concept map entries, 4 structured note sections, 8 flashcards, 5 practice questions.`;
 
-    const notes = await geminiJSON(prompt, SYSTEM);
+    const notes = await openrouterJSON(prompt, SYSTEM);
     return NextResponse.json({ notes });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

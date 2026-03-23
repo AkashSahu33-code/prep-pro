@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { gemini } from '../../../lib/gemini';
+import { openrouter } from '../../../lib/openrouter';
 
 const SYSTEM = `You are an expert AI tutor for Indian students (CBSE, JEE, NEET, UPSC).
 You answer questions grounded in NCERT textbooks and standard educational sources.
@@ -10,16 +10,16 @@ Rules:
 - For math/physics problems, show every step clearly.
 - You may respond in Hinglish if the student writes in Hindi/Hinglish.
 - Keep answers clear, structured and at the student's level.
-- IMPORTANT: When explaining concepts that involve processes, relationships, hierarchies, cycles, or comparisons, include a Mermaid diagram to visualize it. Use \`\`\`mermaid code blocks.
-- Supported Mermaid types: flowchart (graph TD/LR), sequenceDiagram, classDiagram, stateDiagram-v2, pie, mindmap, timeline.
+
 - Examples of when to use diagrams:
   - Biology: Cell division stages, metabolic pathways, food chains, organ systems
   - Physics: Circuit diagrams, force diagrams, process flows
   - Chemistry: Reaction mechanisms, periodic table relationships, bonding
   - Math: Solution flowcharts, geometric relationships
   - History: Timelines, cause-effect chains
-- Keep Mermaid syntax simple and valid. Quote labels with special characters using brackets like ["Label text"].
-- You can include multiple diagrams if needed for complex topics.`;
+- EXTREMELY IMPORTANT: When visual illustrations, diagrams, or real-life examples would aid understanding, you MUST insert a visual description tag exactly like \`[IMAGE: detailed description of what should be drawn]\`.
+
+- You can include multiple diagrams or images if needed.`;
 
 
 export async function POST(req: NextRequest) {
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       systemPrompt += `\n\nThe student has uploaded a document for reference. Here is the extracted content:\n---\n${fileContext}\n---\nUse this content to answer questions when relevant. Quote specific parts when answering.`;
     }
 
-    const reply = await gemini(prompt, systemPrompt);
+    const reply = await openrouter(prompt, systemPrompt);
 
     return NextResponse.json({ reply });
   } catch (e: any) {

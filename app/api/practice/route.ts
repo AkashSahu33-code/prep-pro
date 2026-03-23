@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { geminiJSONWithRetry } from '../../../lib/gemini';
+import { openrouterJSONWithRetry } from '../../../lib/openrouter';
 
 const SYSTEM = `You are an expert question paper setter for JEE, NEET, CBSE and UPSC exams.
 Generate questions that exactly match PYQ (Previous Year Question) style and difficulty.
@@ -58,7 +58,7 @@ Rules:
 - Explanation must be detailed enough to teach from scratch
 - Return ONLY the JSON array, no other text`;
 
-    const rawQuestions = await geminiJSONWithRetry<any[]>(prompt, SYSTEM, 2);
+    const rawQuestions = await openrouterJSONWithRetry<any[]>(prompt, SYSTEM, 2);
     const questions = validateAndNormalize(rawQuestions, count || 5);
 
     if (questions.length === 0) {

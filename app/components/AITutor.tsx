@@ -1,6 +1,5 @@
 'use client';
-import { useState, useRef, useEffect, useCallback } from 'react';
-import dynamic from 'next/dynamic';
+import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { SUBJECTS } from '../../lib/store';
 import {
   Conversation, ChatMessage, ChatAttachment,
@@ -9,8 +8,6 @@ import {
 } from '../../lib/chatStore';
 import { getMemories, addMemories, getMemoriesForPrompt, deleteMemory, MemoryItem } from '../../lib/memory';
 
-// Dynamic import MermaidBlock to avoid SSR issues
-const MermaidBlock = dynamic(() => import('./MermaidBlock'), { ssr: false });
 
 interface DisplayMessage { role: 'user' | 'assistant'; content: string; timestamp: Date; }
 
@@ -31,43 +28,192 @@ function formatResponse(text: string) {
 }
 
 interface ContentSegment {
-  type: 'text' | 'mermaid' | 'code';
+  type: 'text' | 'code' | 'image-desc' | 'image-url' | 'math-block';
   content: string;
   language?: string;
+  url?: string;
 }
 
-function parseMessageContent(content: string): ContentSegment[] {
+function parseMessageContent(content: string | any[]): ContentSegment[] {
+  if (typeof content !== 'string') {
+    try { content = Array.isArray(content) ? JSON.stringify(content) : String(content); }
+    catch { content = ''; }
+  }
+  
   const segments: ContentSegment[] = [];
-  // Match ```mermaid ... ``` and ```language ... ``` blocks
-  const codeBlockRegex = /```(\w*)\s*\n([\s\S]*?)```/g;
+
+  // First pass: extract code blocks (mermaid, code)
+  const codeBlockRegex = /```(\w*)\s*\n?([\s\S]*?)```/g;
   let lastIndex = 0;
   let match;
 
   while ((match = codeBlockRegex.exec(content)) !== null) {
-    // Text before code block
     if (match.index > lastIndex) {
       const text = content.slice(lastIndex, match.index).trim();
-      if (text) segments.push({ type: 'text', content: text });
+      if (text) extractInlineSegments(text, segments);
     }
     const lang = match[1].toLowerCase();
     const code = match[2].trim();
-    if (lang === 'mermaid') {
-      segments.push({ type: 'mermaid', content: code });
-    } else {
-      segments.push({ type: 'code', content: code, language: lang || 'text' });
-    }
+    segments.push({ type: 'code', content: code, language: lang || 'text' });
     lastIndex = match.index + match[0].length;
   }
 
-  // Remaining text
   if (lastIndex < content.length) {
     const text = content.slice(lastIndex).trim();
-    if (text) segments.push({ type: 'text', content: text });
+    if (text) extractInlineSegments(text, segments);
   }
 
   if (segments.length === 0) segments.push({ type: 'text', content });
   return segments;
 }
+
+// Extract [IMAGE: ...] descriptions, ![alt](url) images, and $$...$$ math blocks from text
+function extractInlineSegments(text: string, segments: ContentSegment[]) {
+  const pattern = /\[IMAGE:\s*([\s\S]*?)\]|!\[([^\]]*)\]\(([^)]+)\)|\$\$([\s\S]*?)\$\$/g;
+  let last = 0;
+  let m;
+
+  while ((m = pattern.exec(text)) !== null) {
+    if (m.index > last) {
+      const before = text.slice(last, m.index).trim();
+      if (before) segments.push({ type: 'text', content: before });
+    }
+    if (m[1] !== undefined) {
+      // [IMAGE: description] → generate via Pollinations
+      segments.push({ type: 'image-desc', content: m[1].trim() });
+    } else if (m[3] !== undefined) {
+      // ![alt](url) → direct image URL
+      segments.push({ type: 'image-url', content: (m[2] || '').trim(), url: m[3].trim() });
+    } else if (m[4] !== undefined) {
+      // $$...$$ → math block
+      segments.push({ type: 'math-block', content: m[4].trim() });
+    }
+    last = m.index + m[0].length;
+  }
+
+  if (last < text.length) {
+    const remaining = text.slice(last).trim();
+    if (remaining) segments.push({ type: 'text', content: remaining });
+  }
+}
+
+// Reusable image block for direct URL images
+const ImageBlock = memo(function ImageBlock({ src, alt, label }: { src: string; alt: string; label?: string }) {
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [retryCount, setRetryCount] = useState(0);
+  const imgSrc = retryCount > 0 ? `${src}${src.includes('?') ? '&' : '?'}retry=${retryCount}` : src;
+
+  return (
+    <div style={{ margin: '14px 0', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--surface)' }}>
+      <div style={{ position: 'relative', width: '100%', minHeight: status === 'loaded' ? 'auto' : 180, background: 'var(--bg-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {status === 'loading' && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 1 }}>
+            <div style={{ width: 28, height: 28, border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Loading image…</span>
+          </div>
+        )}
+        {status === 'error' && (
+          <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: '100%' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.5, margin: 0 }}>{alt || 'Image could not be loaded'}</p>
+            {retryCount < 2 && (
+              <button onClick={() => { setStatus('loading'); setRetryCount(c => c + 1); }}
+                style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text-2)', cursor: 'pointer', fontSize: 11 }}>🔄 Retry</button>
+            )}
+          </div>
+        )}
+        {status !== 'error' && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imgSrc} alt={alt}
+            style={{ width: '100%', height: 'auto', display: status === 'loaded' ? 'block' : 'none', maxHeight: 400, objectFit: 'contain', background: 'var(--bg-3)' }}
+            loading="lazy" onLoad={() => setStatus('loaded')} onError={() => setStatus('error')} />
+        )}
+      </div>
+      {label && (
+        <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: 10, fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'var(--accent-2)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>📷 {label}</div>
+          <p style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5, margin: 0 }}>{alt}</p>
+        </div>
+      )}
+    </div>
+  );
+});
+
+// Image block that generates images via fal-ai/flux/dev
+const GeneratedImageBlock = memo(function GeneratedImageBlock({ prompt }: { prompt: string }) {
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setStatus('loading');
+    setImageUrl(null);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    fetch('/api/image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+      signal: controller.signal,
+    })
+      .then(res => res.json())
+      .then(data => {
+        clearTimeout(timeout);
+        if (cancelled) return;
+        if (data.url) {
+          setImageUrl(data.url);
+          // status transitions to 'loaded' via img onLoad
+        } else {
+          setStatus('error');
+        }
+      })
+      .catch(() => {
+        clearTimeout(timeout);
+        if (!cancelled) setStatus('error');
+      });
+
+    return () => { cancelled = true; clearTimeout(timeout); controller.abort(); };
+  }, [prompt, retryCount]);
+
+  return (
+    <div style={{ margin: '14px 0', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--surface)' }}>
+      <div style={{ position: 'relative', width: '100%', minHeight: status === 'loaded' ? 'auto' : 180, background: 'var(--bg-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {status === 'loading' && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 1 }}>
+            <div style={{ width: 28, height: 28, border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Generating illustration…</span>
+          </div>
+        )}
+        {status === 'error' && (
+          <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: '100%' }}>
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style={{ opacity: 0.5 }}>
+              <rect width="48" height="48" rx="8" fill="var(--surface-2)" />
+              <path d="M14 34l8-10 6 7.5L34 24l6 10H14z" fill="var(--text-3)" opacity="0.4" />
+              <circle cx="18" cy="18" r="3" fill="var(--text-3)" opacity="0.4" />
+            </svg>
+            <p style={{ fontSize: 12, color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.5, margin: 0 }}>{prompt}</p>
+            {retryCount < 2 && (
+              <button onClick={() => { setRetryCount(c => c + 1); }}
+                style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text-2)', cursor: 'pointer', fontSize: 11 }}>🔄 Retry</button>
+            )}
+          </div>
+        )}
+        {imageUrl && status !== 'error' && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt={prompt}
+            style={{ width: '100%', height: 'auto', display: status === 'loaded' ? 'block' : 'none', maxHeight: 400, objectFit: 'contain', background: 'var(--bg-3)' }}
+            loading="lazy" onLoad={() => setStatus('loaded')} onError={() => setStatus('error')} />
+        )}
+      </div>
+      <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)' }}>
+        <div style={{ fontSize: 10, fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'var(--accent-2)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>📷 AI-Generated Illustration</div>
+        <p style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5, margin: 0 }}>{prompt}</p>
+      </div>
+    </div>
+  );
+});
 
 function MessageContent({ content, isUser }: { content: string; isUser: boolean }) {
   if (isUser) {
@@ -80,9 +226,7 @@ function MessageContent({ content, isUser }: { content: string; isUser: boolean 
   return (
     <div className="prose-ai" style={{ color: 'var(--text)', fontSize: 14 }}>
       {segments.map((seg, i) => {
-        if (seg.type === 'mermaid') {
-          return <MermaidBlock key={i} chart={seg.content} />;
-        }
+
         if (seg.type === 'code') {
           return (
             <div key={i} style={{ margin: '10px 0', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
@@ -92,6 +236,25 @@ function MessageContent({ content, isUser }: { content: string; isUser: boolean 
               <pre style={{ padding: '12px 14px', background: 'var(--bg-3)', margin: 0, overflowX: 'auto', fontSize: 13, lineHeight: 1.6 }}>
                 <code style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--text)' }}>{seg.content}</code>
               </pre>
+            </div>
+          );
+        }
+        if (seg.type === 'image-desc') {
+          return <GeneratedImageBlock key={`img-${i}`} prompt={seg.content} />;
+        }
+        if (seg.type === 'image-url') {
+          return <ImageBlock key={i} src={seg.url!} alt={seg.content} />;
+        }
+        if (seg.type === 'math-block') {
+          return (
+            <div key={i} style={{
+              margin: '10px 0', padding: '14px 18px', background: 'var(--bg-3)',
+              borderRadius: 8, border: '1px solid var(--border)',
+              fontFamily: 'JetBrains Mono, serif', fontSize: 15,
+              textAlign: 'center', color: 'var(--text)', overflowX: 'auto',
+              letterSpacing: '0.5px',
+            }}>
+              {seg.content}
             </div>
           );
         }
@@ -116,6 +279,11 @@ export default function AITutor() {
   const [activeConvoId, setActiveConvoId] = useState<string | null>(null);
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+
+  // Speech state
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   // UI state
   const [input, setInput] = useState('');
@@ -142,6 +310,40 @@ export default function AITutor() {
       loadConversation(all[0].id);
     }
     setMemoriesState(getMemories());
+
+    // Init Speech Recognition
+    if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-IN'; // Indian accent optimized
+
+      recognitionRef.current.onresult = (event: any) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        
+        // Append final parts or show interim
+        const currentVal = inputRef.current?.value || '';
+        // Simplest approach: just set the input to the current recognized text
+        const text = finalTranscript || interimTranscript;
+        if (text) {
+          setInput(prev => prev ? prev + ' ' + text : text);
+        }
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
   }, []);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -293,9 +495,9 @@ export default function AITutor() {
       const data = await res.json();
 
       let replyContent: string;
-      if (data.error?.includes('GEMINI_API_KEY')) {
+      if (data.error?.includes('Ollama') || data.error?.includes('ECONNREFUSED')) {
         setApiKeyMissing(true);
-        replyContent = '⚠️ **Gemini API key not configured.** Please add your free API key to `.env.local`:\n\n`GEMINI_API_KEY=your_key`\n\nGet a free key at: https://aistudio.google.com/app/apikey';
+        replyContent = '⚠️ **Ollama is not running.** Please start Ollama:\n\n`ollama serve`\n\nMake sure you have the model pulled: `ollama pull gemma3:4b`';
       } else {
         replyContent = data.reply || data.error || 'Could not get a response.';
       }
@@ -312,6 +514,50 @@ export default function AITutor() {
       saveCurrentMessages(finalMessages, attachments);
     }
     setLoading(false);
+  };
+
+  const toggleListen = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      if (recognitionRef.current) {
+        // Clear input when starting fresh dictation if it's empty
+        recognitionRef.current.start();
+        setIsListening(true);
+      } else {
+        alert("Speech recognition isn't supported in your browser.");
+      }
+    }
+  };
+
+  const speakText = (text: string) => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel(); // Stop any pending speech
+
+    // Remove markdown formatting before speaking
+    const cleanText = text
+      .replace(/[*_~`#\[\]]/g, '') 
+      .replace(/!\[.*?\]\(.*?\)/g, '')
+      .replace(/\[IMAGE:.*?\]/g, '')
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'en-IN';
+    utterance.rate = 1.0;
+    
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -435,7 +681,7 @@ export default function AITutor() {
                   🤖 {activeConvo?.title || 'AI Tutor'}
                 </h1>
               )}
-              <p style={{ color: 'var(--text-3)', fontSize: 11 }}>Gemini 2.5 Flash Lite • NCERT-grounded</p>
+              <p style={{ color: 'var(--text-3)', fontSize: 11 }}>StepFun 3.5 Flash • OpenRouter</p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
@@ -467,7 +713,7 @@ export default function AITutor() {
         {apiKeyMissing && (
           <div style={{ padding: '8px 20px', background: 'var(--amber-dim)', borderBottom: '1px solid var(--amber)', flexShrink: 0 }}>
             <p style={{ fontSize: 12, color: 'var(--amber)' }}>
-              ⚠️ Add <code style={{ background: 'var(--bg-3)', padding: '1px 6px', borderRadius: 4 }}>GEMINI_API_KEY</code> to <code style={{ background: 'var(--bg-3)', padding: '1px 6px', borderRadius: 4 }}>.env.local</code>
+              ⚠️ Connection error. Make sure you are connected to the internet.
             </p>
           </div>
         )}
@@ -505,8 +751,26 @@ export default function AITutor() {
               </div>
               <div style={{ maxWidth: '82%', padding: '11px 15px', borderRadius: m.role === 'user' ? '12px 2px 12px 12px' : '2px 12px 12px 12px', background: m.role === 'user' ? 'var(--accent)' : 'var(--surface)', border: m.role === 'user' ? 'none' : '1px solid var(--border)' }}>
                 <MessageContent content={m.content} isUser={m.role === 'user'} />
-                <div style={{ fontSize: 10, color: m.role === 'user' ? 'rgba(255,255,255,0.5)' : 'var(--text-3)', marginTop: 5 }}>
-                  {m.timestamp.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+                  <div style={{ fontSize: 10, color: m.role === 'user' ? 'rgba(255,255,255,0.5)' : 'var(--text-3)' }}>
+                    {m.timestamp.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                  
+                  {/* Text-to-Speech button for assistant messages */}
+                  {m.role === 'assistant' && (
+                    <button 
+                      onClick={() => isSpeaking ? stopSpeaking() : speakText(m.content)}
+                      style={{ 
+                        background: 'none', border: 'none', cursor: 'pointer', 
+                        opacity: 0.6, fontSize: 16, padding: '2px 6px',
+                        color: isSpeaking ? 'var(--accent)' : 'var(--text-2)'
+                      }}
+                      title={isSpeaking ? "Stop Speaking" : "Read Aloud"}
+                    >
+                      {isSpeaking ? '🔇' : '🔊'}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -547,15 +811,31 @@ export default function AITutor() {
 
             <textarea ref={inputRef} className="input" rows={2}
               style={{ resize: 'none', minHeight: 44, maxHeight: 120, lineHeight: 1.5 }}
-              placeholder="Type your doubt... (Enter to send, Shift+Enter for new line)"
+              placeholder={isListening ? "Listening..." : "Type your doubt... (Enter to send, Shift+Enter for new line)"}
               value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} />
+              
+            {/* Microphone button */}
+            <button 
+              className="btn-ghost" 
+              style={{ 
+                height: 44, padding: '0 12px', fontSize: 18, flexShrink: 0,
+                color: isListening ? '#ef4444' : 'var(--text-2)',
+                background: isListening ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                borderRadius: '50%'
+              }}
+              onClick={toggleListen} 
+              title={isListening ? "Stop listening" : "Dictate using microphone"}
+            >
+              🎤
+            </button>
+
             <button className="btn-primary" style={{ height: 44, minWidth: 70, justifyContent: 'center', flexShrink: 0, fontSize: 13, padding: '0 16px' }}
               onClick={() => send()} disabled={loading || !input.trim()}>
               Send ↑
             </button>
           </div>
           <p style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 5 }}>
-            Gemini 2.5 Flash Lite (free) • {attachments.length > 0 ? `${attachments.length} file(s) attached` : 'Attach PDFs & docs for context'} • {memories.length > 0 ? `${memories.length} memories` : 'Building memory...'}
+            OpenRouter StepFun 3.5 Flash • {attachments.length > 0 ? `${attachments.length} file(s) attached` : 'Attach PDFs & docs for context'} • {memories.length > 0 ? `${memories.length} memories` : 'Building memory...'}
           </p>
         </div>
       </div>

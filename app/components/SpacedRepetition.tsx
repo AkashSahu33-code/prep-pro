@@ -368,13 +368,13 @@ export default function SpacedRepetition() {
           </div>
 
           {/* Learning curve + upcoming */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 18, marginBottom: 28 }}>
-            <div className="card" style={{ padding: 22 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 18, marginBottom: 20 }}>
+            <div className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 14 }}>
                 <BarChart2 size={15} color="var(--text-2)" strokeWidth={2} />
                 <h3 style={{ fontSize: 13.5 }}>Retention Score</h3>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 130, flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, flexDirection: 'column' }}>
                 <div style={{ position: 'relative', width: 110, height: 110 }}>
                   <svg width="110" height="110" style={{ transform: 'rotate(-90deg)' }}>
                     <circle cx="55" cy="55" r="48" fill="none" stroke="var(--bg-3)" strokeWidth="6" />
@@ -398,17 +398,91 @@ export default function SpacedRepetition() {
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 120 }}>
                 {upcomingData.map((d, i) => (
-                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
-                    <div style={{ fontSize: 11, color: d.isToday ? 'var(--amber)' : 'var(--text-2)', fontWeight: 600 }}>{d.count > 0 ? d.count : ''}</div>
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end', position: 'relative' }}>
+                    <div style={{ 
+                      fontSize: 11, 
+                      color: d.isToday ? 'var(--bg)' : 'var(--text-2)', 
+                      fontWeight: 700,
+                      background: d.isToday ? 'var(--amber)' : 'transparent',
+                      padding: d.isToday ? '2px 6px' : '0',
+                      borderRadius: 4,
+                      zIndex: 1,
+                      marginBottom: -2
+                    }}>{d.count > 0 ? d.count : ''}</div>
                     <div style={{
-                      width: '100%', background: d.isToday ? 'var(--amber)' : 'var(--accent)',
+                      width: '100%', 
+                      background: d.isToday 
+                        ? 'linear-gradient(to top, rgba(245,158,11,0.2), rgba(245,158,11,0.8))' 
+                        : 'linear-gradient(to top, rgba(109,94,245,0.1), rgba(109,94,245,0.6))',
                       borderRadius: '4px 4px 0 0',
-                      height: `${Math.max(4, (d.count / maxUpcoming) * 88)}px`,
+                      height: `${Math.max(8, (d.count / maxUpcoming) * 85)}px`,
                       opacity: d.count === 0 ? 0.15 : 1, transition: 'height 0.4s ease',
+                      borderTop: `2px solid ${d.isToday ? 'var(--amber)' : 'var(--accent)'}`
                     }} />
-                    <div style={{ fontSize: 10.5, color: 'var(--text-3)' }}>{d.label}</div>
+                    <div style={{ fontSize: 10.5, color: d.isToday ? 'var(--amber)' : 'var(--text-3)', fontWeight: d.isToday ? 600 : 400 }}>{d.label}</div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+
+          {/* New row: Subject Breakdown & Recent Accuracy */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 18, marginBottom: 28 }}>
+            <div className="card" style={{ padding: 22 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 18 }}>
+                <BrainCircuit size={15} color="var(--text-2)" strokeWidth={2} />
+                <h3 style={{ fontSize: 13.5 }}>Retention by Subject</h3>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {Object.entries(subjectGroups).map(([subject, items]) => {
+                  const subRet = Math.min(99, Math.round((items.reduce((a, c) => a + c.easeFactor, 0) / items.length) / 2.5 * 85));
+                  return (
+                    <div key={subject}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
+                        <span style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 500 }}>{subject} <span style={{ color: 'var(--text-3)', fontSize: 11, marginLeft: 4 }}>({items.length} cards)</span></span>
+                        <span style={{ fontSize: 12, color: subRet > 80 ? 'var(--emerald)' : subRet > 60 ? 'var(--amber)' : 'var(--rose)', fontWeight: 600 }}>{subRet}%</span>
+                      </div>
+                      <div className="progress-bar" style={{ height: 6 }}>
+                        <div className="progress-fill" style={{
+                          width: `${subRet}%`,
+                          background: subRet > 80 ? 'var(--emerald)' : subRet > 60 ? 'var(--amber)' : 'var(--rose)'
+                        }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            <div className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 14 }}>
+                <CheckCircle2 size={15} color="var(--text-2)" strokeWidth={2} />
+                <h3 style={{ fontSize: 13.5 }}>Recent Accuracy</h3>
+              </div>
+              
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16 }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                    <span style={{ color: 'var(--text-2)' }}>Perfect / Easy</span>
+                    <span style={{ color: 'var(--emerald)', fontWeight: 600 }}>68%</span>
+                  </div>
+                  <div className="progress-bar" style={{ height: 6 }}><div style={{ width: '68%', background: 'var(--emerald)', height: '100%', borderRadius: 100 }} /></div>
+                </div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                    <span style={{ color: 'var(--text-2)' }}>Good</span>
+                    <span style={{ color: 'var(--sky)', fontWeight: 600 }}>22%</span>
+                  </div>
+                  <div className="progress-bar" style={{ height: 6 }}><div style={{ width: '22%', background: 'var(--sky)', height: '100%', borderRadius: 100 }} /></div>
+                </div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                    <span style={{ color: 'var(--text-2)' }}>Hard / Blackout</span>
+                    <span style={{ color: 'var(--rose)', fontWeight: 600 }}>10%</span>
+                  </div>
+                  <div className="progress-bar" style={{ height: 6 }}><div style={{ width: '10%', background: 'var(--rose)', height: '100%', borderRadius: 100 }} /></div>
+                </div>
               </div>
             </div>
           </div>

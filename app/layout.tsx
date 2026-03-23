@@ -4,14 +4,14 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 // Theme context
-export const ThemeCtx = createContext<{ theme: string; toggle: () => void }>({ theme: 'dark', toggle: () => {} });
+export const ThemeCtx = createContext<{ theme: string; toggle: () => void }>({ theme: 'light', toggle: () => {} });
 export const useTheme = () => useContext(ThemeCtx);
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
-    const saved = localStorage.getItem('theme') || 'dark';
+    const saved = localStorage.getItem('theme') || 'light';
     setTheme(saved);
     document.documentElement.className = saved === 'light' ? 'light' : '';
   }, []);

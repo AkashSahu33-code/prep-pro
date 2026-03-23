@@ -18,7 +18,7 @@ async function extractPDFWithGemini(buffer: Buffer): Promise<{ text: string; pag
   // Convert buffer to base64
   const base64 = buffer.toString('base64');
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
 
   const prompt = `Extract ALL text content from this PDF document.
 Return the complete text exactly as it appears in reading order, preserving headings, paragraphs, lists, and table structure.

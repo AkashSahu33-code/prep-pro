@@ -1,13 +1,9 @@
-import { gemini } from './gemini';
-
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const MODEL = 'stepfun/step-3.5-flash:free';
 
 export async function openrouter(prompt: string, systemInstruction?: string): Promise<string> {
   if (!OPENROUTER_API_KEY) {
-    // Fallback to Gemini if no OpenRouter key
-    console.warn('OPENROUTER_API_KEY not set. Falling back to Gemini.');
-    return gemini(prompt, systemInstruction);
+    throw new Error('OPENROUTER_API_KEY is not set. Add it to .env.local');
   }
 
   const messages: { role: string; content: string }[] = [];
@@ -16,41 +12,34 @@ export async function openrouter(prompt: string, systemInstruction?: string): Pr
   }
   messages.push({ role: 'user', content: prompt });
 
-  try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost:3000',
-        'X-Title': 'StudyAI',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages,
-        temperature: 0.7,
-      }),
-    });
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'http://localhost:3000',
+      'X-Title': 'PrepPro',
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages,
+      temperature: 0.7,
+    }),
+  });
 
-    if (!res.ok) {
-      if (res.status === 429 || res.status >= 500) {
-         console.warn(`OpenRouter error ${res.status}. Falling back to Gemini.`);
-         return gemini(prompt, systemInstruction);
-      }
-      const errText = await res.text();
-      throw new Error(`OpenRouter API error ${res.status}: ${errText}`);
+  if (!res.ok) {
+    const errText = await res.text();
+    if (res.status === 429) {
+      throw new Error('Rate limited by OpenRouter. Wait a moment and try again.');
     }
-
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content;
-    
-    if (!text) throw new Error('Empty response from OpenRouter');
-    return text;
-    
-  } catch (e: any) {
-    console.warn(`OpenRouter request failed: ${e.message}. Falling back to Gemini.`);
-    return gemini(prompt, systemInstruction);
+    throw new Error(`OpenRouter API error ${res.status}: ${errText}`);
   }
+
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content;
+
+  if (!text) throw new Error('Empty response from OpenRouter');
+  return text;
 }
 
 function cleanJSON(raw: string): string {

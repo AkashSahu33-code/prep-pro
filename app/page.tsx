@@ -8,6 +8,7 @@ import StudyPlanner from './components/StudyPlanner';
 import PracticeQuestions from './components/PracticeQuestions';
 import AITutor from './components/AITutor';
 import VideoProcessor from './components/VideoProcessor';
+import AutoDub from './components/AutoDub';
 import Settings from './components/Settings';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Timer } from 'lucide-react';
@@ -20,6 +21,7 @@ const MODULE_SUBJECTS: Record<string, string> = {
   practice: 'Practice',
   tutor:    'AI Tutor',
   video:    'Lecture Digest',
+  autodub:  'Auto-Dub',
 };
 
 export default function Home() {
@@ -35,6 +37,7 @@ export default function Home() {
       case 'practice':  return <PracticeQuestions />;
       case 'tutor':     return <AITutor />;
       case 'video':     return <VideoProcessor />;
+      case 'autodub':   return <AutoDub />;
       case 'settings':  return <Settings />;
       default:          return <Dashboard setActiveModule={setActiveModule} />;
     }

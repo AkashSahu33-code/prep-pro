@@ -14,6 +14,7 @@ const NAV = [
   { id: 'practice', icon: Zap,            label: 'Practice Tests' },
   { id: 'tutor',    icon: MessageSquare,  label: 'AI Tutor' },
   { id: 'video',    icon: Video,          label: 'Lecture Digest' },
+  { id: 'autodub',  icon: Sparkles,       label: 'Auto-Dub' },
 ];
 
 export default function Sidebar({ activeModule, setActiveModule }: SidebarProps) {

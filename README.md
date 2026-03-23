@@ -1,50 +1,84 @@
-# StudyAI — AI-Powered Study Companion
+# 🎓 PrepPro — Intelligent Study Platform
 
-Full-stack Next.js app with 5 AI-powered study modules. Uses **100% free APIs**.
+PrepPro is a comprehensive, AI-powered learning platform designed primarily for students preparing for competitive exams (CBSE, JEE, NEET, UPSC). It combines modern learning techniques like spaced repetition with advanced AI to create a personalized, highly effective study environment.
 
-## 🚀 Quick Start
+---
 
-```bash
+## ✨ Core Features
+
+### 🧠 Memory Engine (Spaced Repetition)
+- Implements the **SM-2 Algorithm** to optimize retention.
+- AI automatically generates flashcards (definition, key points, formulas, common mistakes) from just a topic name.
+- Tracks retention rates, due reviews, and provides a continuous learning loop.
+- Visual knowledge graph and subject-by-subject accuracy breakdown.
+
+### 🤖 Context-Aware AI Tutor
+- An expert tutor powered by the **OpenRouter API** (defaulting to `stepfun/step-3.5-flash`).
+- **Long-term Memory:** Automatically extracts and remembers key facts about the student to personalize future answers.
+- **Context Management:** Handles long conversations seamlessly by intelligently summarizing older messages to prevent token limits.
+- Supports file uploads (PDFs, text) and can answer questions based on the uploaded document.
+
+### 🎙️ Auto-Dub & Video Digest
+- **ElevenLabs Integration:** Automatically dubs educational YouTube videos into 30+ regional and international languages while preserving the original speaker's voice.
+- Transcribes YouTube videos into structured lecture notes, summaries, and key takeaways using `youtube-transcript`.
+
+### 📊 Comprehensive Dashboard
+- Tracks study sessions, streaks, and total hours studied with an interactive GitHub-style heatmap.
+- **AI Performance Insights:** Analyzes your recent performance across subjects and provides actionable recommendations (e.g., "Clear Physics backlog").
+
+### 📋 Study Planner & Practice (Modules)
+- AI-generated daily, weekly, and monthly schedules based on the student's goals.
+- Automated generation of Multiple Choice Questions (MCQs) for continuous practice.
+
+---
+
+## 🛠️ Technology Stack
+
+- **Framework:** [Next.js](https://nextjs.org/) (React)
+- **Styling:** Vanilla CSS variables and minimal utility classes (`globals.css`)
+- **Icons:** [Lucide React](https://lucide.dev/)
+- **AI Integration:** [OpenRouter API](https://openrouter.ai/) for the Tutor, [ElevenLabs API](https://elevenlabs.io/) for Dubbing.
+- **State/Storage:** High-performance client-side `localStorage` abstraction for blazing fast offline-first speed.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+Make sure you have Node.js installed (v18+ recommended).
+
+### 1. Clone & Install
+\`\`\`bash
+git clone https://github.com/yourusername/studyai-final.git
+cd studyai-final
 npm install
-# Add your free Gemini API key to .env.local
+\`\`\`
+
+### 2. Environment Variables
+Create a \`.env.local\` file in the root directory and add your API keys. You can use \`.env.local.example\` as a reference.
+
+\`\`\`env
+# .env.local
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
+\`\`\`
+
+*(Note: The AI tutor requires an OpenRouter key to function. The Auto-Dub feature requires an ElevenLabs key).*
+
+### 3. Run the Development Server
+\`\`\`bash
 npm run dev
-```
+\`\`\`
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
 
-Open [http://localhost:3000](http://localhost:3000)
+---
 
-## 🔑 Setup (2 minutes)
+## 🎨 UI/UX Design
 
-1. Get a **free** Gemini API key at [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
-2. Create `.env.local` in the project root:
-   ```
-   GEMINI_API_KEY=your_key_here
-   ```
-3. Run `npm run dev`
+PrepPro uses a premium, highly responsive design system with both **Light Mode** (default) and **Dark Mode**. It utilizes modern aesthetics like glassmorphism, soft gradients, and micro-animations to keep the reading experience engaging without being distracting.
 
-**Free tier**: 1,500 requests/day · 15 req/min · No credit card needed
+---
 
-## 📦 Features
+## 📝 License
 
-| Module | Description | Free Service |
-|--------|-------------|-------------|
-| 🔁 Spaced Repetition | SM-2 algorithm, knowledge graph, AI study cards | Gemini Flash |
-| 📅 Study Planner | Personalized weekly schedule from exam date | Gemini Flash |
-| ⚡ Practice Questions | PYQ-pattern MCQs with hints & explanations | Gemini Flash |
-| 🤖 AI Tutor | NCERT-grounded doubt solving in English/Hinglish | Gemini Flash |
-| 🎬 Video Processor | YouTube → structured notes, flashcards, concept maps | Gemini Flash + youtube-transcript |
-
-## 🆓 Free Services Used
-
-- **Google Gemini 1.5 Flash** — All AI features (free at Google AI Studio)
-- **youtube-transcript** — Transcript extraction from YouTube (no key needed)
-- **YouTube oEmbed** — Video metadata (free, no key needed)
-- **localStorage** — All study data stored in browser (no backend/DB needed)
-
-## 🛠 Tech Stack
-
-- Next.js 15 (App Router)
-- TypeScript
-- Tailwind CSS
-- Google Gemini 1.5 Flash API
-- youtube-transcript npm package
-- localStorage for persistence
+This project is licensed under the MIT License. See the LICENSE file for details.

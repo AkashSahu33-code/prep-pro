@@ -1,7 +1,7 @@
 # 🎓 PrepPro — Intelligent Study Platform
 
 PrepPro is a comprehensive, AI-powered learning platform designed primarily for students preparing for competitive exams (CBSE, JEE, NEET, UPSC). It combines modern learning techniques like spaced repetition with advanced AI to create a personalized, highly effective study environment.
-
+It was a team project, made during Dev-Clash Hackathon 2026, NIT Raipur, where we secured 2nd position competing over 100+ teams 
 ---
 
 ## ✨ Core Features
